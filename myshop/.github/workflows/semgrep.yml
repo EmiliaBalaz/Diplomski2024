@@ -1,0 +1,47 @@
+name: Semgrep SAST Scan - block or not
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  # Job koji blokira pipeline ako ima high/critical nalaza
+  semgrep-block-pipeline:
+    name: Semgrep with pipeline block
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        id: semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/default"
+          # publishToken: ${{ secrets.SEMGREP_APP_TOKEN }} # opcionalno za Semgrep CI
+          generateSarif: true
+
+      - name: Fail on findings (block pipeline)
+        if: ${{ steps.semgrep.outputs.exit-code != 0 }}
+        run: |
+          echo "❌ High/Critical findings detected - blocking pipeline."
+          exit 1
+
+  # Job koji samo prikazuje izveštaj, ne blokira pipeline
+  semgrep-no-block:
+    name: Semgrep without blocking pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan (no fail)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/default"
+          # publishToken: ${{ secrets.SEMGREP_APP_TOKEN }} # opcionalno za Semgrep CI
+          generateSarif: true
