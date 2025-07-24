@@ -1,0 +1,37 @@
+name: SonarQube - Block on Critical Findings
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+
+    - name: Run SonarQube Scanner
+      run: |
+        wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux.zip
+        unzip sonar-scanner-cli-6.2.1.4610-linux.zip
+        ./sonar-scanner-6.2.1.4610-linux/bin/sonar-scanner
+
+    - name: Wait and check Quality Gate
+      run: |
+        sleep 10
+        PROJECT_KEY="diplomski2024"
+        TOKEN="sqp_6075e922b079435ff61a48852e3148d353b8b326"
+        HOST="http://localhost:9000"
+        STATUS=$(curl -s -u $TOKEN: "$HOST/api/qualitygates/project_status?projectKey=$PROJECT_KEY" | jq -r '.projectStatus.status')
+        echo "Quality Gate Status: $STATUS"
+        if [ "$STATUS" = "ERROR" ]; then
+          echo "Quality Gate failed, breaking the pipeline."
+          exit 1
+        fi
